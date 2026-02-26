@@ -180,7 +180,7 @@
       white-space: nowrap;
     }
     input[type="range"]{ width:100%; }
-    input[type="number"], select, input[type="file"], input[type="text"]{
+    input[type="number"], select, input[type="file"]{
       width: 100%;
       padding: 10px 10px;
       border-radius: 14px;
@@ -279,7 +279,7 @@
         <div class="logo" aria-hidden="true"></div>
         <div class="title">
           <b>Sleep Guard</b>
-          <span>Eye-open check with warning, alarm, snooze, YouTube or MP3 sounds, and logs</span>
+          <span>Eye-open check with warning, alarm, snooze, MP3 sounds, blink and yawn counters, and logs</span>
         </div>
       </div>
       <div class="pillRow">
@@ -375,33 +375,63 @@
         <div class="grid2">
           <div class="field">
             <label>
-              Add YouTube wake song (URL)
-              <span class="val" id="ytStatusVal">ready</span>
-            </label>
-            <input id="ytUrl" type="text" placeholder="https://www.youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID" />
-            <div class="btnRow">
-              <button id="addYtBtn">Add YouTube</button>
-              <button id="removeYtBtn">Remove selected YouTube</button>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>
               Upload MP3 alarm sounds
               <span class="val" id="soundCountVal">0</span>
             </label>
             <input id="soundFiles" type="file" accept="audio/*" multiple />
           </div>
+
+          <div class="field">
+            <label>
+              Selected alarm sound
+              <span class="val" id="soundSelVal">default</span>
+            </label>
+            <select id="soundSelect">
+              <option value="__default__">Default beep</option>
+            </select>
+          </div>
         </div>
 
-        <div class="field">
-          <label>
-            Selected alarm sound
-            <span class="val" id="soundSelVal">default</span>
-          </label>
-          <select id="soundSelect">
-            <option value="__default__">Default beep</option>
-          </select>
+        <div class="grid2">
+          <div class="field">
+            <label>
+              Blink counter
+              <span class="val" id="blinkCountVal">0</span>
+            </label>
+            <div class="subtle">Counts full blink cycles (closed then open)</div>
+            <div class="btnRow">
+              <button id="resetBlinkBtn">Reset blinks</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>
+              Yawn counter
+              <span class="val" id="yawnCountVal">0</span>
+            </label>
+            <div class="subtle">Detects long mouth openings (jaw open)</div>
+            <div class="btnRow">
+              <button id="resetYawnBtn">Reset yawns</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label>
+              Yawn threshold (jaw open)
+              <span class="val" id="jawThresholdVal">0.65</span>
+            </label>
+            <input id="jawThreshold" type="range" min="0.2" max="0.95" step="0.01" value="0.65" />
+          </div>
+
+          <div class="field">
+            <label>
+              Minimum yawn duration (ms)
+              <span class="val" id="yawnMinMsVal">800</span>
+            </label>
+            <input id="yawnMinMs" type="number" min="200" max="3000" step="50" value="800" />
+          </div>
         </div>
 
         <div class="field">
@@ -420,16 +450,8 @@
   </main>
 
   <footer>
-    Warning mode shows a smooth red overlay and plays a small beep. Alarm mode rings (MP3, YouTube, or default beep) and triggers vibration while ringing (device support varies).
+    Warning mode shows a smooth red overlay and plays a small beep. Alarm mode rings (MP3 or default beep) and triggers vibration while ringing (device support varies). Blink and yawn counters run while detection is active.
   </footer>
-
-  <!-- Hidden YouTube player container -->
-  <div id="ytPlayerWrap" style="position:fixed; width:1px; height:1px; left:-9999px; top:-9999px; opacity:0;">
-    <div id="ytPlayer"></div>
-  </div>
-
-  <!-- YouTube IFrame Player API (must be non-module) -->
-  <script src="https://www.youtube.com/iframe_api"></script>
 
   <script type="module">
     import {
@@ -477,13 +499,18 @@
     const soundCountVal = document.getElementById("soundCountVal");
     const soundSelVal = document.getElementById("soundSelVal");
 
-    const ytUrl = document.getElementById("ytUrl");
-    const addYtBtn = document.getElementById("addYtBtn");
-    const removeYtBtn = document.getElementById("removeYtBtn");
-    const ytStatusVal = document.getElementById("ytStatusVal");
-
     const zoomRange = document.getElementById("zoomRange");
     const zoomVal = document.getElementById("zoomVal");
+
+    const blinkCountVal = document.getElementById("blinkCountVal");
+    const yawnCountVal = document.getElementById("yawnCountVal");
+    const resetBlinkBtn = document.getElementById("resetBlinkBtn");
+    const resetYawnBtn = document.getElementById("resetYawnBtn");
+
+    const jawThreshold = document.getElementById("jawThreshold");
+    const jawThresholdVal = document.getElementById("jawThresholdVal");
+    const yawnMinMs = document.getElementById("yawnMinMs");
+    const yawnMinMsVal = document.getElementById("yawnMinMsVal");
 
     const logList = document.getElementById("logList");
     const logCountVal = document.getElementById("logCountVal");
@@ -512,11 +539,20 @@
     // Vibration while ringing
     let vibrateTimer = null;
 
-    // YouTube
-    let ytPlayer = null;
-    let ytReady = false;
-    let pendingYtVideoId = null;
-    let ytItems = []; // {id, title}
+    // Blink and yawn counters
+    let blinkCount = 0;
+    let yawnCount = 0;
+
+    // Blink detection state (cycle-based)
+    let blinkWasClosed = false;
+    let lastBlinkMs = 0;
+    const blinkDebounceMs = 180;
+
+    // Yawn detection state (duration-based)
+    let yawnStartMs = null;
+    let yawnLatched = false;
+    let lastYawnMs = 0;
+    const yawnCooldownMs = 1200;
 
     // Logs
     const logs = [];
@@ -597,7 +633,6 @@
       }
     }
 
-    // Eye blendshapes
     function getBlendshapeScore(result, name){
       const list = result?.faceBlendshapes?.[0]?.categories;
       if (!list) return null;
@@ -608,13 +643,18 @@
     function eyesClosedFromBlendshapes(result, threshold){
       const l = getBlendshapeScore(result, "eyeBlinkLeft");
       const r = getBlendshapeScore(result, "eyeBlinkRight");
-      if (l == null || r == null) return { known:false, closed:false, avg:null };
+      if (l == null || r == null) return { known:false, closed:false, avg:null, l:null, r:null };
       const avg = (l + r) / 2;
       const closed = (l >= threshold) && (r >= threshold);
-      return { known:true, closed, avg };
+      return { known:true, closed, avg, l, r };
     }
 
-    // Camera zoom if supported
+    function jawOpenScore(result){
+      // MediaPipe face blendshapes commonly include "jawOpen"
+      const j = getBlendshapeScore(result, "jawOpen");
+      return j == null ? null : j;
+    }
+
     async function setupZoomControl(track){
       zoomRange.disabled = true;
       zoomVal.textContent = "n/a";
@@ -665,13 +705,11 @@
       });
     }
 
-    // Overlay warning
     function setWarningOverlay(on){
       if (on) warningOverlay.classList.add("on");
       else warningOverlay.classList.remove("on");
     }
 
-    // WebAudio tones
     function ensureAudioCtx(){
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       return audioCtx;
@@ -725,12 +763,9 @@
       }, 700);
     }
 
-    // Vibration while alarm is ringing
     function startVibrationLoop(){
       stopVibrationLoop();
       if (!navigator.vibrate) return;
-
-      // Vibrate pattern repeats every ~2 seconds
       navigator.vibrate([800, 200, 800]);
       vibrateTimer = setInterval(() => {
         try { navigator.vibrate([800, 200, 800]); } catch {}
@@ -747,128 +782,23 @@
       }
     }
 
-    // YouTube support
-    function parseYouTubeId(url){
-      try{
-        const u = new URL(url.trim());
-        if (u.hostname.includes("youtube.com")){
-          return u.searchParams.get("v");
-        }
-        if (u.hostname.includes("youtu.be")){
-          const id = u.pathname.replace("/", "");
-          return id || null;
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    }
-
-    function addYouTubeOption(videoId){
-      if (!videoId) return;
-      if (ytItems.some(x => x.id === videoId)) return;
-
-      const label = "YouTube: " + videoId;
-      ytItems.push({ id: videoId, title: label });
-
-      const opt = document.createElement("option");
-      opt.value = "yt:" + videoId;
-      opt.textContent = label;
-      soundSelect.appendChild(opt);
-    }
-
-    function removeSelectedYouTubeOption(){
-      const v = soundSelect.value;
-      if (!v.startsWith("yt:")) return;
-
-      const id = v.slice(3);
-      ytItems = ytItems.filter(x => x.id !== id);
-
-      for (const opt of Array.from(soundSelect.options)){
-        if (opt.value === v) opt.remove();
-      }
-
-      soundSelect.value = "__default__";
-      soundSelVal.textContent = "default";
-    }
-
-    window.onYouTubeIframeAPIReady = () => {
-      try{
-        ytPlayer = new window.YT.Player("ytPlayer", {
-          height: "1",
-          width: "1",
-          videoId: "",
-          playerVars: {
-            autoplay: 0,
-            controls: 0,
-            rel: 0,
-            playsinline: 1
-          },
-          events: {
-            onReady: () => {
-              ytReady = true;
-              ytStatusVal.textContent = "ready";
-              if (pendingYtVideoId){
-                loadYouTubeVideo(pendingYtVideoId);
-                pendingYtVideoId = null;
-              }
-            }
-          }
-        });
-      } catch {
-        ytStatusVal.textContent = "error";
-      }
-    };
-
-    function loadYouTubeVideo(videoId){
-      if (!ytReady || !ytPlayer){
-        pendingYtVideoId = videoId;
-        ytStatusVal.textContent = "loading";
-        return;
-      }
-      ytStatusVal.textContent = "loaded";
-      ytPlayer.loadVideoById({ videoId });
-      ytPlayer.setLoop(true);
-      ytPlayer.setVolume(Math.round(Number(volume.value) * 100));
-    }
-
-    // Audio stop/start
     function stopAllAudio(){
       stopToneTimers();
       stopSmallBeep();
-
       if (audioEl){
         audioEl.pause();
         audioEl.currentTime = 0;
-      }
-      if (ytPlayer && ytReady){
-        try { ytPlayer.stopVideo(); } catch {}
       }
     }
 
     async function playSelectedAlarmSound(){
       const sel = soundSelect.value;
 
-      // YouTube
-      if (sel.startsWith("yt:")){
-        const videoId = sel.slice(3);
-        loadYouTubeVideo(videoId);
-        try{
-          ytPlayer.setVolume(Math.round(Number(volume.value) * 100));
-          ytPlayer.playVideo();
-        } catch {
-          startBigBeep();
-        }
-        return;
-      }
-
-      // Default beep
       if (sel === "__default__"){
         startBigBeep();
         return;
       }
 
-      // MP3
       const s = uploadedSounds.find(x => x.url === sel);
       if (!s){
         startBigBeep();
@@ -903,14 +833,11 @@
       setAlarm("bad", "alarm: ON");
       addLog("ALARM_ON", reason);
 
-      // Stop warning signals then start alarm signals
       setWarningOverlay(false);
       stopSmallBeep();
 
       stopAllAudio();
       await playSelectedAlarmSound();
-
-      // Vibrate while ringing
       startVibrationLoop();
     }
 
@@ -940,7 +867,6 @@
       stopSmallBeep();
     }
 
-    // Warning state
     function updateWarningState(isWarning){
       if (isWarning && !alarmOn){
         setWarningOverlay(true);
@@ -948,6 +874,45 @@
       } else {
         setWarningOverlay(false);
         stopSmallBeep();
+      }
+    }
+
+    function updateBlinkCounter(nowMs, eyeClosed){
+      // Count one blink when we see a closed state followed by open
+      if (!blinkWasClosed && eyeClosed){
+        blinkWasClosed = true;
+      } else if (blinkWasClosed && !eyeClosed){
+        if (nowMs - lastBlinkMs >= blinkDebounceMs){
+          blinkCount += 1;
+          blinkCountVal.textContent = String(blinkCount);
+          addLog("BLINK", "Blink count = " + blinkCount);
+          lastBlinkMs = nowMs;
+        }
+        blinkWasClosed = false;
+      }
+    }
+
+    function updateYawnCounter(nowMs, jawScoreVal){
+      const thr = Number(jawThreshold.value);
+      const minMs = Math.max(200, Math.min(3000, Number(yawnMinMs.value || 800)));
+
+      const jawOpen = (jawScoreVal != null) && (jawScoreVal >= thr);
+
+      if (jawOpen && !yawnLatched){
+        if (yawnStartMs == null) yawnStartMs = nowMs;
+        const dur = nowMs - yawnStartMs;
+        if (dur >= minMs && (nowMs - lastYawnMs >= yawnCooldownMs)){
+          yawnCount += 1;
+          yawnCountVal.textContent = String(yawnCount);
+          addLog("YAWN", "Yawn count = " + yawnCount + " (jaw " + jawScoreVal.toFixed(2) + ")");
+          lastYawnMs = nowMs;
+          yawnLatched = true;
+        }
+      }
+
+      if (!jawOpen){
+        yawnStartMs = null;
+        yawnLatched = false;
       }
     }
 
@@ -979,19 +944,23 @@
           closedStartMs = null;
           if (alarmOn) stopAlarm("Eyes opened");
         }
+
+        // Blink counter uses eye.closed for a cycle
+        updateBlinkCounter(now, eye.closed);
       }
 
-      // Stage 1 warning
+      // Yawn counter uses jawOpen blendshape
+      const jaw = jawOpenScore(result);
+      updateYawnCounter(now, jaw);
+
       const eyeWarning = (eye.known && eye.closed && closedForMs >= warningMs && closedForMs < alarmMs);
       updateWarningState(eyeWarning);
 
-      // Stage 2 alarm
       const eyeAlarm = (eye.known && eye.closed && closedForMs >= alarmMs);
       if (eyeAlarm){
         startAlarm("Eyes closed for " + Math.round(closedForMs / 1000) + "s");
       }
 
-      // Snooze status pill
       if (now < snoozeUntilMs){
         if (!alarmOn) setAlarm("warn", "snoozed");
       } else {
@@ -1091,13 +1060,7 @@
     volume.oninput = () => {
       const v = Number(volume.value);
       volumeVal.textContent = Math.round(v * 100) + "%";
-
       if (audioEl) audioEl.volume = v;
-      if (ytPlayer && ytReady){
-        try { ytPlayer.setVolume(Math.round(v * 100)); } catch {}
-      }
-
-      // Default beep loudness uses volume.value when tones play next
     };
 
     soundFiles.onchange = () => {
@@ -1109,12 +1072,7 @@
         uploadedSounds.push({ name: f.name, url: URL.createObjectURL(f) });
       }
 
-      // Rebuild select list, keep default + existing YouTube items
-      const ytOptions = Array.from(soundSelect.options).filter(o => o.value.startsWith("yt:"));
-
       soundSelect.innerHTML = '<option value="__default__">Default beep</option>';
-      for (const opt of ytOptions) soundSelect.appendChild(opt);
-
       for (const s of uploadedSounds){
         const opt = document.createElement("option");
         opt.value = s.url;
@@ -1130,8 +1088,6 @@
       const sel = soundSelect.value;
       if (sel === "__default__"){
         soundSelVal.textContent = "default";
-      } else if (sel.startsWith("yt:")){
-        soundSelVal.textContent = "YouTube: " + sel.slice(3);
       } else {
         const s = uploadedSounds.find(x => x.url === sel);
         soundSelVal.textContent = s ? s.name : "custom";
@@ -1144,29 +1100,25 @@
       }
     };
 
-    addYtBtn.onclick = () => {
-      const id = parseYouTubeId(ytUrl.value);
-      if (!id){
-        ytStatusVal.textContent = "invalid";
-        return;
-      }
-
-      addYouTubeOption(id);
-      ytStatusVal.textContent = "added";
-      ytUrl.value = "";
-
-      soundSelect.value = "yt:" + id;
-      soundSelVal.textContent = "YouTube: " + id;
-
-      addLog("YOUTUBE_ADD", "Added video " + id);
+    resetBlinkBtn.onclick = () => {
+      blinkCount = 0;
+      blinkCountVal.textContent = "0";
+      addLog("BLINK_RESET", "Blink counter reset");
     };
 
-    removeYtBtn.onclick = () => {
-      const v = soundSelect.value;
-      if (v.startsWith("yt:")){
-        addLog("YOUTUBE_REMOVE", "Removed video " + v.slice(3));
-      }
-      removeSelectedYouTubeOption();
+    resetYawnBtn.onclick = () => {
+      yawnCount = 0;
+      yawnCountVal.textContent = "0";
+      addLog("YAWN_RESET", "Yawn counter reset");
+    };
+
+    jawThreshold.oninput = () => {
+      jawThresholdVal.textContent = Number(jawThreshold.value).toFixed(2);
+    };
+
+    yawnMinMs.oninput = () => {
+      const v = Math.max(200, Math.min(3000, Number(yawnMinMs.value || 800)));
+      yawnMinMsVal.textContent = String(v);
     };
 
     stopAlarmBtn.onclick = () => stopAlarm("Manual stop");
@@ -1187,6 +1139,9 @@
     snoozeVal.textContent = String(Number(snoozeMinutes.value));
     volumeVal.textContent = Math.round(Number(volume.value) * 100) + "%";
     soundCountVal.textContent = "0";
+    soundSelVal.textContent = "default";
+    jawThresholdVal.textContent = Number(jawThreshold.value).toFixed(2);
+    yawnMinMsVal.textContent = String(Number(yawnMinMs.value));
     renderLogs();
 
     setStatus("", "idle");
