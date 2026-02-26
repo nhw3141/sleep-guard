@@ -1,0 +1,1197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sleep Guard</title>
+
+  <style>
+    :root{
+      color-scheme: dark;
+      --bg0:#070A12;
+      --bg1:#0B1020;
+      --stroke: rgba(255,255,255,.10);
+      --stroke2: rgba(255,255,255,.16);
+      --text:#E9ECF6;
+      --muted:rgba(233,236,246,.72);
+      --good:#57E39B;
+      --warn:#FFD166;
+      --bad:#FF5C7A;
+      --brand:#7C5CFF;
+      --brand2:#4CC9F0;
+      --shadow: 0 18px 45px rgba(0,0,0,.45);
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1200px 700px at 10% -10%, rgba(124,92,255,.35), transparent 55%),
+        radial-gradient(900px 600px at 95% 10%, rgba(76,201,240,.25), transparent 55%),
+        radial-gradient(1000px 700px at 50% 110%, rgba(255,92,122,.18), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    header{
+      padding: 18px 18px 6px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding: 14px 16px;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .brand{ display:flex; gap:12px; align-items:center; }
+    .logo{
+      width: 38px; height: 38px; border-radius: 14px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 55%),
+        linear-gradient(135deg, var(--brand), var(--brand2));
+      box-shadow: 0 10px 30px rgba(124,92,255,.25);
+    }
+    .title{ display:flex; flex-direction:column; line-height:1.05; }
+    .title b{ font-size: 14px; letter-spacing:.2px; }
+    .title span{ font-size: 12px; color: var(--muted); }
+
+    .pillRow{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .pill{
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      display:flex; gap:8px; align-items:center;
+      white-space: nowrap;
+    }
+    .dot{
+      width: 9px; height: 9px; border-radius: 50%;
+      background: rgba(255,255,255,.25);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+    }
+    .dot.good{ background: var(--good); box-shadow: 0 0 0 3px rgba(87,227,155,.12); }
+    .dot.warn{ background: var(--warn); box-shadow: 0 0 0 3px rgba(255,209,102,.12); }
+    .dot.bad{ background: var(--bad); box-shadow: 0 0 0 3px rgba(255,92,122,.12); }
+
+    main{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 14px 18px 26px;
+      display:grid;
+      grid-template-columns: 1.25fr .85fr;
+      gap: 16px;
+    }
+
+    .card{
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+
+    .cardHeader{
+      padding: 14px 16px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .cardHeader h2{
+      margin:0; font-size: 13px; letter-spacing:.2px;
+      color: rgba(233,236,246,.92);
+    }
+    .subtle{ font-size: 12px; color: var(--muted); }
+
+    .videoWrap{
+      position:relative;
+      aspect-ratio: 16/9;
+      background: #050814;
+    }
+    video, canvas{
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .controls{
+      padding: 14px 16px 16px;
+      display:grid;
+      gap: 12px;
+    }
+
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btnRow{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    button{
+      border: 1px solid var(--stroke2);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .05s ease, background .15s ease, border-color .15s ease;
+    }
+    button:hover{ background: rgba(255,255,255,.09); }
+    button:active{ transform: translateY(1px); }
+    button:disabled{ opacity:.48; cursor:not-allowed; }
+
+    .primary{
+      background: linear-gradient(135deg, rgba(124,92,255,.25), rgba(76,201,240,.16));
+      border-color: rgba(124,92,255,.35);
+    }
+    .danger{
+      background: linear-gradient(135deg, rgba(255,92,122,.26), rgba(255,209,102,.10));
+      border-color: rgba(255,92,122,.35);
+    }
+
+    .field{
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(0,0,0,.18);
+      display:grid; gap: 8px;
+    }
+    .field label{
+      font-size: 12px;
+      color: var(--muted);
+      display:flex; justify-content:space-between; gap:10px;
+      align-items: center;
+    }
+    .val{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: rgba(233,236,246,.9);
+      padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 999px;
+      width: fit-content;
+      background: rgba(255,255,255,.04);
+      white-space: nowrap;
+    }
+    input[type="range"]{ width:100%; }
+    input[type="number"], select, input[type="file"], input[type="text"]{
+      width: 100%;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      outline: none;
+    }
+
+    .alert{
+      display:none;
+      margin: 2px 0 0;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,92,122,.40);
+      background: rgba(255,92,122,.12);
+      font-weight: 900;
+      letter-spacing:.2px;
+    }
+
+    .log{
+      max-height: 240px;
+      overflow:auto;
+      padding: 0 2px 2px;
+    }
+    .logItem{
+      padding: 10px 10px;
+      margin: 8px 0;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      font-size: 12px;
+      color: rgba(233,236,246,.9);
+    }
+    .logItem small{ color: var(--muted); display:block; margin-top: 2px; }
+    .tag{
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      white-space: nowrap;
+      font-size: 12px;
+      color: rgba(233,236,246,.9);
+    }
+
+    footer{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 18px 26px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 980px){
+      main{ grid-template-columns: 1fr; }
+      .pillRow{ justify-content:flex-start; }
+    }
+
+    /* Smooth full-screen warning overlay */
+    .warningOverlay{
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 220ms ease;
+      z-index: 9999;
+      background:
+        radial-gradient(900px 500px at 50% 25%, rgba(255, 60, 80, .32), transparent 62%),
+        radial-gradient(1200px 700px at 50% 115%, rgba(255, 140, 70, .18), transparent 60%),
+        linear-gradient(180deg, rgba(255, 30, 60, .06), rgba(255, 30, 60, .04));
+      mix-blend-mode: screen;
+    }
+    .warningOverlay.on{
+      opacity: 1;
+      animation: warningPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes warningPulse{
+      0%{ filter: saturate(1.0) blur(0px); }
+      50%{ filter: saturate(1.25) blur(0.5px); }
+      100%{ filter: saturate(1.0) blur(0px); }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="warningOverlay" id="warningOverlay"></div>
+
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div class="title">
+          <b>Sleep Guard</b>
+          <span>Eye-open check with warning, alarm, snooze, YouTube or MP3 sounds, and logs</span>
+        </div>
+      </div>
+      <div class="pillRow">
+        <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">idle</span></div>
+        <div class="pill"><span class="dot" id="eyesDot"></span><span id="eyesText">eyes: unknown</span></div>
+        <div class="pill"><span class="dot" id="alarmDot"></span><span id="alarmText">alarm: off</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="cardHeader">
+        <h2>Camera preview</h2>
+        <div class="subtle">Better lighting improves accuracy</div>
+      </div>
+      <div class="videoWrap">
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="overlay"></canvas>
+      </div>
+    </section>
+
+    <aside class="card">
+      <div class="cardHeader">
+        <h2>Controls</h2>
+        <div class="subtle">Use HTTPS or localhost for camera access</div>
+      </div>
+
+      <div class="controls">
+        <div class="btnRow">
+          <button class="primary" id="startBtn">Start</button>
+          <button id="stopBtn" disabled>Stop</button>
+          <button class="danger" id="stopAlarmBtn" disabled>Stop alarm</button>
+          <button id="snoozeBtn" disabled>Snooze</button>
+        </div>
+
+        <div class="alert" id="alertBox">WAKE UP. Eyes closed too long.</div>
+
+        <div class="grid2">
+          <div class="field">
+            <label>
+              Warning time (seconds)
+              <span class="val" id="warningSecondsVal">6s</span>
+            </label>
+            <input id="warningSeconds" type="range" min="3" max="15" value="6" />
+          </div>
+
+          <div class="field">
+            <label>
+              Alarm time (seconds)
+              <span class="val" id="alarmSecondsVal">15s</span>
+            </label>
+            <input id="alarmSeconds" type="range" min="6" max="30" value="15" />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label>
+              Eye-closed threshold (blink score)
+              <span class="val" id="blinkThresholdVal">0.60</span>
+            </label>
+            <input id="blinkThreshold" type="range" min="0.2" max="0.9" step="0.01" value="0.6" />
+          </div>
+
+          <div class="field">
+            <label>
+              Snooze duration (minutes)
+              <span class="val" id="snoozeVal">2</span>
+            </label>
+            <input id="snoozeMinutes" type="number" min="1" max="60" value="2" />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label>
+              Alarm volume
+              <span class="val" id="volumeVal">70%</span>
+            </label>
+            <input id="volume" type="range" min="0" max="1" step="0.01" value="0.7" />
+          </div>
+
+          <div class="field">
+            <label>
+              Camera zoom (if supported)
+              <span class="val" id="zoomVal">n/a</span>
+            </label>
+            <input id="zoomRange" type="range" min="1" max="1" step="0.1" value="1" disabled />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label>
+              Add YouTube wake song (URL)
+              <span class="val" id="ytStatusVal">ready</span>
+            </label>
+            <input id="ytUrl" type="text" placeholder="https://www.youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID" />
+            <div class="btnRow">
+              <button id="addYtBtn">Add YouTube</button>
+              <button id="removeYtBtn">Remove selected YouTube</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>
+              Upload MP3 alarm sounds
+              <span class="val" id="soundCountVal">0</span>
+            </label>
+            <input id="soundFiles" type="file" accept="audio/*" multiple />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>
+            Selected alarm sound
+            <span class="val" id="soundSelVal">default</span>
+          </label>
+          <select id="soundSelect">
+            <option value="__default__">Default beep</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>
+            Drowsy event log
+            <span class="val" id="logCountVal">0</span>
+          </label>
+          <div class="btnRow" style="margin-top:2px;">
+            <button id="clearLogBtn">Clear</button>
+            <button id="downloadCsvBtn">Download CSV</button>
+          </div>
+          <div class="log" id="logList"></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    Warning mode shows a smooth red overlay and plays a small beep. Alarm mode rings (MP3, YouTube, or default beep) and triggers vibration while ringing (device support varies).
+  </footer>
+
+  <!-- Hidden YouTube player container -->
+  <div id="ytPlayerWrap" style="position:fixed; width:1px; height:1px; left:-9999px; top:-9999px; opacity:0;">
+    <div id="ytPlayer"></div>
+  </div>
+
+  <!-- YouTube IFrame Player API (must be non-module) -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <script type="module">
+    import {
+      FaceLandmarker,
+      FilesetResolver,
+      DrawingUtils
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
+
+    // UI
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+    const warningOverlay = document.getElementById("warningOverlay");
+
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const stopAlarmBtn = document.getElementById("stopAlarmBtn");
+    const snoozeBtn = document.getElementById("snoozeBtn");
+
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const eyesDot = document.getElementById("eyesDot");
+    const eyesText = document.getElementById("eyesText");
+    const alarmDot = document.getElementById("alarmDot");
+    const alarmText = document.getElementById("alarmText");
+
+    const alertBox = document.getElementById("alertBox");
+
+    const warningSeconds = document.getElementById("warningSeconds");
+    const warningSecondsVal = document.getElementById("warningSecondsVal");
+    const alarmSeconds = document.getElementById("alarmSeconds");
+    const alarmSecondsVal = document.getElementById("alarmSecondsVal");
+
+    const blinkThreshold = document.getElementById("blinkThreshold");
+    const blinkThresholdVal = document.getElementById("blinkThresholdVal");
+
+    const snoozeMinutes = document.getElementById("snoozeMinutes");
+    const snoozeVal = document.getElementById("snoozeVal");
+
+    const volume = document.getElementById("volume");
+    const volumeVal = document.getElementById("volumeVal");
+
+    const soundFiles = document.getElementById("soundFiles");
+    const soundSelect = document.getElementById("soundSelect");
+    const soundCountVal = document.getElementById("soundCountVal");
+    const soundSelVal = document.getElementById("soundSelVal");
+
+    const ytUrl = document.getElementById("ytUrl");
+    const addYtBtn = document.getElementById("addYtBtn");
+    const removeYtBtn = document.getElementById("removeYtBtn");
+    const ytStatusVal = document.getElementById("ytStatusVal");
+
+    const zoomRange = document.getElementById("zoomRange");
+    const zoomVal = document.getElementById("zoomVal");
+
+    const logList = document.getElementById("logList");
+    const logCountVal = document.getElementById("logCountVal");
+    const clearLogBtn = document.getElementById("clearLogBtn");
+    const downloadCsvBtn = document.getElementById("downloadCsvBtn");
+
+    // State
+    let stream = null;
+    let faceLandmarker = null;
+    let rafId = null;
+
+    let closedStartMs = null;
+
+    let alarmOn = false;
+    let snoozeUntilMs = 0;
+
+    // MP3 playback
+    let uploadedSounds = []; // {name,url}
+    let audioEl = null;
+
+    // WebAudio tones
+    let audioCtx = null;
+    let bigBeepTimer = null;
+    let smallBeepTimer = null;
+
+    // Vibration while ringing
+    let vibrateTimer = null;
+
+    // YouTube
+    let ytPlayer = null;
+    let ytReady = false;
+    let pendingYtVideoId = null;
+    let ytItems = []; // {id, title}
+
+    // Logs
+    const logs = [];
+
+    function setPill(dot, textEl, state, label){
+      dot.className = "dot " + state;
+      textEl.textContent = label;
+    }
+    function setStatus(state, label){ setPill(statusDot, statusText, state, label); }
+    function setEyes(state, label){ setPill(eyesDot, eyesText, state, label); }
+    function setAlarm(state, label){ setPill(alarmDot, alarmText, state, label); }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function addLog(type, detail){
+      const tsISO = new Date().toISOString();
+      logs.unshift({ tsISO, type, detail });
+      renderLogs();
+    }
+
+    function renderLogs(){
+      logCountVal.textContent = String(logs.length);
+      if (logs.length === 0){
+        logList.innerHTML = '<div class="subtle" style="padding:8px 6px;">No events yet.</div>';
+        return;
+      }
+      logList.innerHTML = logs.slice(0, 120).map(item => {
+        const t = item.tsISO.replace("T"," ").replace("Z"," UTC");
+        return `
+          <div class="logItem">
+            <div>
+              <div><b>${escapeHtml(item.type)}</b></div>
+              <small>${escapeHtml(item.detail)}</small>
+            </div>
+            <div class="tag">${escapeHtml(t)}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function downloadCsv(){
+      const header = ["timestamp_iso","type","detail"];
+      const rows = logs.map(x => [x.tsISO, x.type, x.detail].map(v => `"${String(v).replaceAll('"','""')}"`).join(","));
+      const csv = [header.join(","), ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "sleep-guard-log.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function resizeCanvasToVideo(){
+      const w = video.videoWidth || 1280;
+      const h = video.videoHeight || 720;
+      canvas.width = w;
+      canvas.height = h;
+    }
+
+    function drawLandmarks(result){
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const landmarks = result?.faceLandmarks?.[0];
+      if (!landmarks) return;
+      const drawingUtils = new DrawingUtils(ctx);
+      const step = 12;
+      for (let i = 0; i < landmarks.length; i += step){
+        drawingUtils.drawLandmarks([landmarks[i]], { radius: 1.6 });
+      }
+    }
+
+    // Eye blendshapes
+    function getBlendshapeScore(result, name){
+      const list = result?.faceBlendshapes?.[0]?.categories;
+      if (!list) return null;
+      const found = list.find(c => c.categoryName === name);
+      return found ? found.score : null;
+    }
+
+    function eyesClosedFromBlendshapes(result, threshold){
+      const l = getBlendshapeScore(result, "eyeBlinkLeft");
+      const r = getBlendshapeScore(result, "eyeBlinkRight");
+      if (l == null || r == null) return { known:false, closed:false, avg:null };
+      const avg = (l + r) / 2;
+      const closed = (l >= threshold) && (r >= threshold);
+      return { known:true, closed, avg };
+    }
+
+    // Camera zoom if supported
+    async function setupZoomControl(track){
+      zoomRange.disabled = true;
+      zoomVal.textContent = "n/a";
+
+      const caps = track.getCapabilities ? track.getCapabilities() : null;
+      if (!caps || caps.zoom == null) return;
+
+      const min = caps.zoom.min ?? 1;
+      const max = caps.zoom.max ?? 1;
+      const step = caps.zoom.step ?? 0.1;
+
+      zoomRange.min = String(min);
+      zoomRange.max = String(max);
+      zoomRange.step = String(step);
+
+      const settings = track.getSettings ? track.getSettings() : {};
+      const current = settings.zoom ?? min;
+
+      zoomRange.value = String(current);
+      zoomVal.textContent = Number(current).toFixed(1);
+      zoomRange.disabled = false;
+
+      zoomRange.oninput = async () => {
+        const z = Number(zoomRange.value);
+        zoomVal.textContent = z.toFixed(1);
+        try{
+          await track.applyConstraints({ advanced: [{ zoom: z }] });
+        } catch {
+          zoomVal.textContent = "unsupported";
+          zoomRange.disabled = true;
+        }
+      };
+    }
+
+    async function initFaceLandmarker(){
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
+
+      faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+        },
+        runningMode: "VIDEO",
+        numFaces: 1,
+        outputFaceBlendshapes: true
+      });
+    }
+
+    // Overlay warning
+    function setWarningOverlay(on){
+      if (on) warningOverlay.classList.add("on");
+      else warningOverlay.classList.remove("on");
+    }
+
+    // WebAudio tones
+    function ensureAudioCtx(){
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function stopToneTimers(){
+      if (bigBeepTimer){ clearInterval(bigBeepTimer); bigBeepTimer = null; }
+      if (smallBeepTimer){ clearInterval(smallBeepTimer); smallBeepTimer = null; }
+    }
+
+    function playToneOnce(freqHz, durationMs, gainLevel){
+      const ctxA = ensureAudioCtx();
+      const osc = ctxA.createOscillator();
+      const g = ctxA.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freqHz;
+
+      const now = ctxA.currentTime;
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0001, gainLevel), now + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + (durationMs / 1000));
+
+      osc.connect(g);
+      g.connect(ctxA.destination);
+
+      osc.start();
+      osc.stop(now + (durationMs / 1000) + 0.02);
+    }
+
+    function startSmallBeep(){
+      if (smallBeepTimer) return;
+      smallBeepTimer = setInterval(() => {
+        const baseVol = Number(volume.value);
+        const gain = Math.max(0.02, baseVol * 0.15);
+        playToneOnce(520, 140, gain);
+      }, 1100);
+    }
+
+    function stopSmallBeep(){
+      if (!smallBeepTimer) return;
+      clearInterval(smallBeepTimer);
+      smallBeepTimer = null;
+    }
+
+    function startBigBeep(){
+      if (bigBeepTimer) return;
+      bigBeepTimer = setInterval(() => {
+        const baseVol = Number(volume.value);
+        const gain = Math.max(0.05, baseVol);
+        playToneOnce(880, 220, gain);
+      }, 700);
+    }
+
+    // Vibration while alarm is ringing
+    function startVibrationLoop(){
+      stopVibrationLoop();
+      if (!navigator.vibrate) return;
+
+      // Vibrate pattern repeats every ~2 seconds
+      navigator.vibrate([800, 200, 800]);
+      vibrateTimer = setInterval(() => {
+        try { navigator.vibrate([800, 200, 800]); } catch {}
+      }, 2000);
+    }
+
+    function stopVibrationLoop(){
+      if (vibrateTimer){
+        clearInterval(vibrateTimer);
+        vibrateTimer = null;
+      }
+      if (navigator.vibrate){
+        try { navigator.vibrate(0); } catch {}
+      }
+    }
+
+    // YouTube support
+    function parseYouTubeId(url){
+      try{
+        const u = new URL(url.trim());
+        if (u.hostname.includes("youtube.com")){
+          return u.searchParams.get("v");
+        }
+        if (u.hostname.includes("youtu.be")){
+          const id = u.pathname.replace("/", "");
+          return id || null;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    }
+
+    function addYouTubeOption(videoId){
+      if (!videoId) return;
+      if (ytItems.some(x => x.id === videoId)) return;
+
+      const label = "YouTube: " + videoId;
+      ytItems.push({ id: videoId, title: label });
+
+      const opt = document.createElement("option");
+      opt.value = "yt:" + videoId;
+      opt.textContent = label;
+      soundSelect.appendChild(opt);
+    }
+
+    function removeSelectedYouTubeOption(){
+      const v = soundSelect.value;
+      if (!v.startsWith("yt:")) return;
+
+      const id = v.slice(3);
+      ytItems = ytItems.filter(x => x.id !== id);
+
+      for (const opt of Array.from(soundSelect.options)){
+        if (opt.value === v) opt.remove();
+      }
+
+      soundSelect.value = "__default__";
+      soundSelVal.textContent = "default";
+    }
+
+    window.onYouTubeIframeAPIReady = () => {
+      try{
+        ytPlayer = new window.YT.Player("ytPlayer", {
+          height: "1",
+          width: "1",
+          videoId: "",
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            rel: 0,
+            playsinline: 1
+          },
+          events: {
+            onReady: () => {
+              ytReady = true;
+              ytStatusVal.textContent = "ready";
+              if (pendingYtVideoId){
+                loadYouTubeVideo(pendingYtVideoId);
+                pendingYtVideoId = null;
+              }
+            }
+          }
+        });
+      } catch {
+        ytStatusVal.textContent = "error";
+      }
+    };
+
+    function loadYouTubeVideo(videoId){
+      if (!ytReady || !ytPlayer){
+        pendingYtVideoId = videoId;
+        ytStatusVal.textContent = "loading";
+        return;
+      }
+      ytStatusVal.textContent = "loaded";
+      ytPlayer.loadVideoById({ videoId });
+      ytPlayer.setLoop(true);
+      ytPlayer.setVolume(Math.round(Number(volume.value) * 100));
+    }
+
+    // Audio stop/start
+    function stopAllAudio(){
+      stopToneTimers();
+      stopSmallBeep();
+
+      if (audioEl){
+        audioEl.pause();
+        audioEl.currentTime = 0;
+      }
+      if (ytPlayer && ytReady){
+        try { ytPlayer.stopVideo(); } catch {}
+      }
+    }
+
+    async function playSelectedAlarmSound(){
+      const sel = soundSelect.value;
+
+      // YouTube
+      if (sel.startsWith("yt:")){
+        const videoId = sel.slice(3);
+        loadYouTubeVideo(videoId);
+        try{
+          ytPlayer.setVolume(Math.round(Number(volume.value) * 100));
+          ytPlayer.playVideo();
+        } catch {
+          startBigBeep();
+        }
+        return;
+      }
+
+      // Default beep
+      if (sel === "__default__"){
+        startBigBeep();
+        return;
+      }
+
+      // MP3
+      const s = uploadedSounds.find(x => x.url === sel);
+      if (!s){
+        startBigBeep();
+        return;
+      }
+
+      if (!audioEl){
+        audioEl = new Audio();
+        audioEl.loop = true;
+      }
+      audioEl.src = s.url;
+      audioEl.volume = Number(volume.value);
+
+      try{
+        await audioEl.play();
+      } catch {
+        startBigBeep();
+      }
+    }
+
+    async function startAlarm(reason){
+      const now = performance.now();
+      if (now < snoozeUntilMs) return;
+      if (alarmOn) return;
+
+      alarmOn = true;
+
+      alertBox.style.display = "block";
+      stopAlarmBtn.disabled = false;
+      snoozeBtn.disabled = false;
+
+      setAlarm("bad", "alarm: ON");
+      addLog("ALARM_ON", reason);
+
+      // Stop warning signals then start alarm signals
+      setWarningOverlay(false);
+      stopSmallBeep();
+
+      stopAllAudio();
+      await playSelectedAlarmSound();
+
+      // Vibrate while ringing
+      startVibrationLoop();
+    }
+
+    function stopAlarm(reason){
+      if (!alarmOn) return;
+      alarmOn = false;
+
+      alertBox.style.display = "none";
+      stopAlarmBtn.disabled = true;
+      snoozeBtn.disabled = true;
+
+      setAlarm("", "alarm: off");
+      stopAllAudio();
+      stopVibrationLoop();
+
+      if (reason) addLog("ALARM_OFF", reason);
+    }
+
+    function snooze(){
+      const mins = Math.max(1, Math.min(60, Number(snoozeMinutes.value || 2)));
+      const now = performance.now();
+      snoozeUntilMs = now + mins * 60 * 1000;
+
+      stopAlarm("Snoozed for " + mins + " min");
+      addLog("SNOOZE", "Paused for " + mins + " min");
+      setWarningOverlay(false);
+      stopSmallBeep();
+    }
+
+    // Warning state
+    function updateWarningState(isWarning){
+      if (isWarning && !alarmOn){
+        setWarningOverlay(true);
+        startSmallBeep();
+      } else {
+        setWarningOverlay(false);
+        stopSmallBeep();
+      }
+    }
+
+    function loop(){
+      const now = performance.now();
+      const result = faceLandmarker.detectForVideo(video, now);
+
+      resizeCanvasToVideo();
+      drawLandmarks(result);
+
+      const warningMs = Number(warningSeconds.value) * 1000;
+      const alarmMs = Number(alarmSeconds.value) * 1000;
+
+      const thr = Number(blinkThreshold.value);
+      const eye = eyesClosedFromBlendshapes(result, thr);
+
+      let closedForMs = 0;
+
+      if (!eye.known){
+        setEyes("", "eyes: unknown");
+        closedStartMs = null;
+      } else {
+        if (eye.closed){
+          setEyes("warn", "eyes: closed (avg " + eye.avg.toFixed(2) + ")");
+          if (closedStartMs == null) closedStartMs = now;
+          closedForMs = now - closedStartMs;
+        } else {
+          setEyes("good", "eyes: open (avg " + eye.avg.toFixed(2) + ")");
+          closedStartMs = null;
+          if (alarmOn) stopAlarm("Eyes opened");
+        }
+      }
+
+      // Stage 1 warning
+      const eyeWarning = (eye.known && eye.closed && closedForMs >= warningMs && closedForMs < alarmMs);
+      updateWarningState(eyeWarning);
+
+      // Stage 2 alarm
+      const eyeAlarm = (eye.known && eye.closed && closedForMs >= alarmMs);
+      if (eyeAlarm){
+        startAlarm("Eyes closed for " + Math.round(closedForMs / 1000) + "s");
+      }
+
+      // Snooze status pill
+      if (now < snoozeUntilMs){
+        if (!alarmOn) setAlarm("warn", "snoozed");
+      } else {
+        if (!alarmOn) setAlarm("", "alarm: off");
+      }
+
+      rafId = requestAnimationFrame(loop);
+    }
+
+    async function start(){
+      try{
+        setStatus("warn", "requesting camera");
+        setEyes("", "eyes: unknown");
+        setAlarm("", "alarm: off");
+
+        setWarningOverlay(false);
+        stopSmallBeep();
+        stopAllAudio();
+        stopVibrationLoop();
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+
+        video.srcObject = stream;
+        await video.play();
+
+        const track = stream.getVideoTracks()[0];
+        await setupZoomControl(track);
+
+        setStatus("warn", "loading model");
+        await initFaceLandmarker();
+
+        setStatus("good", "running");
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+
+        closedStartMs = null;
+        snoozeUntilMs = 0;
+
+        addLog("START", "Detection started");
+        rafId = requestAnimationFrame(loop);
+      } catch (e){
+        console.error(e);
+        setStatus("bad", "camera error");
+        addLog("ERROR", "Camera permission issue or you are not on HTTPS or localhost");
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+    }
+
+    function stop(){
+      updateWarningState(false);
+      stopAlarm("Stopped");
+
+      if (rafId){ cancelAnimationFrame(rafId); rafId = null; }
+
+      if (stream){
+        for (const t of stream.getTracks()) t.stop();
+        stream = null;
+      }
+      faceLandmarker = null;
+
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      setStatus("", "stopped");
+      setEyes("", "eyes: unknown");
+      setAlarm("", "alarm: off");
+
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+
+      zoomRange.disabled = true;
+      zoomVal.textContent = "n/a";
+
+      addLog("STOP", "Detection stopped");
+    }
+
+    // UI bindings
+    warningSeconds.oninput = () => { warningSecondsVal.textContent = warningSeconds.value + "s"; };
+
+    alarmSeconds.oninput = () => {
+      if (Number(alarmSeconds.value) < Number(warningSeconds.value)){
+        alarmSeconds.value = warningSeconds.value;
+      }
+      alarmSecondsVal.textContent = alarmSeconds.value + "s";
+    };
+
+    blinkThreshold.oninput = () => { blinkThresholdVal.textContent = Number(blinkThreshold.value).toFixed(2); };
+
+    snoozeMinutes.oninput = () => {
+      const v = Math.max(1, Math.min(60, Number(snoozeMinutes.value || 2)));
+      snoozeVal.textContent = String(v);
+    };
+
+    volume.oninput = () => {
+      const v = Number(volume.value);
+      volumeVal.textContent = Math.round(v * 100) + "%";
+
+      if (audioEl) audioEl.volume = v;
+      if (ytPlayer && ytReady){
+        try { ytPlayer.setVolume(Math.round(v * 100)); } catch {}
+      }
+
+      // Default beep loudness uses volume.value when tones play next
+    };
+
+    soundFiles.onchange = () => {
+      for (const s of uploadedSounds) URL.revokeObjectURL(s.url);
+      uploadedSounds = [];
+
+      const files = Array.from(soundFiles.files || []);
+      for (const f of files){
+        uploadedSounds.push({ name: f.name, url: URL.createObjectURL(f) });
+      }
+
+      // Rebuild select list, keep default + existing YouTube items
+      const ytOptions = Array.from(soundSelect.options).filter(o => o.value.startsWith("yt:"));
+
+      soundSelect.innerHTML = '<option value="__default__">Default beep</option>';
+      for (const opt of ytOptions) soundSelect.appendChild(opt);
+
+      for (const s of uploadedSounds){
+        const opt = document.createElement("option");
+        opt.value = s.url;
+        opt.textContent = s.name;
+        soundSelect.appendChild(opt);
+      }
+
+      soundCountVal.textContent = String(uploadedSounds.length);
+      addLog("MP3_UPLOAD", "Loaded " + uploadedSounds.length + " file(s)");
+    };
+
+    soundSelect.onchange = () => {
+      const sel = soundSelect.value;
+      if (sel === "__default__"){
+        soundSelVal.textContent = "default";
+      } else if (sel.startsWith("yt:")){
+        soundSelVal.textContent = "YouTube: " + sel.slice(3);
+      } else {
+        const s = uploadedSounds.find(x => x.url === sel);
+        soundSelVal.textContent = s ? s.name : "custom";
+      }
+
+      if (alarmOn){
+        stopAllAudio();
+        playSelectedAlarmSound();
+        addLog("ALARM_SOUND", "Changed sound while alarm active");
+      }
+    };
+
+    addYtBtn.onclick = () => {
+      const id = parseYouTubeId(ytUrl.value);
+      if (!id){
+        ytStatusVal.textContent = "invalid";
+        return;
+      }
+
+      addYouTubeOption(id);
+      ytStatusVal.textContent = "added";
+      ytUrl.value = "";
+
+      soundSelect.value = "yt:" + id;
+      soundSelVal.textContent = "YouTube: " + id;
+
+      addLog("YOUTUBE_ADD", "Added video " + id);
+    };
+
+    removeYtBtn.onclick = () => {
+      const v = soundSelect.value;
+      if (v.startsWith("yt:")){
+        addLog("YOUTUBE_REMOVE", "Removed video " + v.slice(3));
+      }
+      removeSelectedYouTubeOption();
+    };
+
+    stopAlarmBtn.onclick = () => stopAlarm("Manual stop");
+    snoozeBtn.onclick = snooze;
+    startBtn.onclick = start;
+    stopBtn.onclick = stop;
+
+    clearLogBtn.onclick = () => {
+      logs.length = 0;
+      renderLogs();
+    };
+    downloadCsvBtn.onclick = downloadCsv;
+
+    // Init view
+    warningSecondsVal.textContent = warningSeconds.value + "s";
+    alarmSecondsVal.textContent = alarmSeconds.value + "s";
+    blinkThresholdVal.textContent = Number(blinkThreshold.value).toFixed(2);
+    snoozeVal.textContent = String(Number(snoozeMinutes.value));
+    volumeVal.textContent = Math.round(Number(volume.value) * 100) + "%";
+    soundCountVal.textContent = "0";
+    renderLogs();
+
+    setStatus("", "idle");
+    setEyes("", "eyes: unknown");
+    setAlarm("", "alarm: off");
+  </script>
+</body>
+</html>
